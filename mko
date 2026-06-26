@@ -1,0 +1,355 @@
+-- [[ ANGELS HUB | STREETBALL v3.0 ]] --
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- [[ SERVICES ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- [[ FOLDER CHECKS ]] --
+local EventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes")
+local ShootRemote = EventsFolder:WaitForChild("Shoot")
+local EquipRemote = EventsFolder:WaitForChild("Equip")
+local StealRemote = EventsFolder:FindFirstChild("Steal") or EventsFolder:FindFirstChild("Action")
+
+-- [[ SETTINGS ]] --
+getgenv().CamLockEnabled = false
+getgenv().GuardEnabled = false
+getgenv().ReachEnabled = false
+getgenv().MagnetEnabled = false
+getgenv().ShotMagnet = false
+getgenv().Smoothness = 0.05 
+getgenv().ReachSize = 10
+getgenv().SelectedTheme = "Amethyst" -- Default Color
+
+-- [[ HOOP CACHE ]] --
+local CachedGoals = {}
+local function RefreshHoops()
+    table.clear(CachedGoals)
+    for _, Obj in pairs(workspace:GetDescendants()) do
+        if Obj:IsA("BasePart") and Obj.Name == "SHEESH" then table.insert(CachedGoals, Obj) end
+    end
+end
+RefreshHoops()
+
+-- [[ SOUL ORIGINAL LOGIC ]] --
+local function pow()
+    local pLabel = player.PlayerGui:FindFirstChild("Power") and player.PlayerGui.Power.PowerFrame.Power
+    return pLabel and tonumber(pLabel.Text) or 85
+end
+
+local function getGoal()
+    local char = player.Character
+    if not char or not char:FindFirstChild("Torso") then return nil, nil end
+    local torsoPos = char.Torso.Position
+    local dist, goal = math.huge, nil
+    for _, v in ipairs(CachedGoals) do
+        if v and v.Parent then
+            local mag = (torsoPos - v.Position).Magnitude
+            if mag < dist then dist, goal = mag, v end
+        end
+    end
+    return dist, goal
+end
+
+local function arc()
+    local dist, goal = getGoal()
+    if not dist then return 65 end
+    local power = pow()
+    dist = math.floor(dist)
+    if power == 85 then
+        if dist == 59 then return 80 elseif dist == 60 then return 78 elseif dist == 61 then return 77
+        elseif dist == 62 then return 75 elseif dist == 63 then return 73 elseif dist == 64 then return 70
+        elseif dist == 65 then return 68 elseif dist == 66 then return 65 elseif dist == 67 then return 63
+        elseif dist == 68 then return 55 elseif dist == 69 then return 53 elseif dist == 70 then return 51
+        elseif dist == 71 then return 46 end
+    elseif power == 80 then
+        if dist == 55 then return 70 elseif dist == 56 then return 68 elseif dist == 57 then return 66
+        elseif dist == 58 then return 64 elseif dist == 59 then return 62 elseif dist == 60 then return 60
+        elseif dist == 61 then return 58 elseif dist == 62 then return 56 elseif dist == 63 then return 54
+        elseif dist == 64 then return 52 elseif dist == 65 then return 50 elseif dist == 66 then return 48 end
+    end
+    return 65
+end
+
+local function GetKey()
+    for _, v in pairs(getgc(true)) do
+        if typeof(v) == "function" and debug.getinfo(v).name == "shoot" then
+            for _, up in pairs(debug.getupvalues(v)) do
+                if typeof(up) == "string" and #up > 10 then return up end
+            end
+        end
+    end
+    return ""
+end
+
+local function Shoot()
+    local dist, goal = getGoal()
+    local ArcVal = arc()
+    if not goal then return end
+    local Vector = goal.Position + Vector3.new(0, ArcVal, 0)
+    local char = player.Character
+    if char and char:FindFirstChild("Head") then
+        local Unit = (Vector - char.Head.Position).Unit
+        local SpawnPosition = char.PrimaryPart.Position + Unit * 3.8
+        ShootRemote:FireServer(Vector, SpawnPosition, GetKey())
+    end
+end
+
+-- [[ THE WINDOW ]] --
+local Window = Rayfield:CreateWindow({
+   Name = "💜 Angels Hub | Streetball",
+   LoadingTitle = "Streetball v3.0 Ultimate...",
+   Theme = getgenv().SelectedTheme, 
+   ConfigurationSaving = { Enabled = true, FolderName = "AngelsHub" }
+})
+
+local CombatTab = Window:CreateTab("🏀 Combat", 4483362458)
+local DefenseTab = Window:CreateTab("🛡️ Defense", 4483362458)
+local ExploitTab = Window:CreateTab("⚡ Exploits", 4483362458)
+local VisualsTab = Window:CreateTab("👁️ Visuals", 4483362458)
+local EmoteTab = Window:CreateTab("✨ Cosmetics", 4483362458)
+local MiscTab = Window:CreateTab("📦 Misc", 4483362458)
+
+-- [[ COMBAT ]] --
+local JToggle = CombatTab:CreateToggle({
+   Name = "Auto Jump-Lock [G]",
+   CurrentValue = false,
+   Callback = function(v) 
+       getgenv().CamLockEnabled = v 
+       Rayfield:Notify({Title = "Combat", Content = "Jump Lock: " .. tostring(v), Duration = 2})
+   end,
+})
+
+CombatTab:CreateSlider({
+   Name = "Lock Smoothness",
+   Range = {0, 1},
+   Increment = 0.01,
+   Suffix = "Smooth",
+   CurrentValue = 0.05,
+   Callback = function(v) getgenv().Smoothness = v end,
+})
+
+CombatTab:CreateSection("Silent Aim")
+CombatTab:CreateLabel("B key: Perfect Jump Shot (Soul Arc Logic)")
+
+-- [[ DEFENSE ]] --
+local GToggle = DefenseTab:CreateToggle({
+   Name = "Predictive Auto-Guard [C]",
+   CurrentValue = false,
+   Callback = function(v) 
+       getgenv().GuardEnabled = v 
+       Rayfield:Notify({Title = "Defense", Content = "Auto-Guard: " .. tostring(v), Duration = 2})
+   end,
+})
+
+DefenseTab:CreateToggle({
+   Name = "Shot/Rebound Magnet",
+   CurrentValue = false,
+   Callback = function(v) 
+       getgenv().ShotMagnet = v 
+       Rayfield:Notify({Title = "Defense", Content = "Shot Magnet: " .. tostring(v), Duration = 2})
+   end,
+})
+
+-- [[ EXPLOITS ]] --
+ExploitTab:CreateToggle({
+    Name = "Universal Long Arm",
+    CurrentValue = false,
+    Callback = function(v) 
+        getgenv().ReachEnabled = v 
+        Rayfield:Notify({Title = "Exploits", Content = "Reach: " .. tostring(v), Duration = 2})
+    end,
+})
+
+ExploitTab:CreateSlider({
+    Name = "Reach Size",
+    Range = {5, 50},
+    Increment = 1,
+    CurrentValue = 10,
+    Callback = function(v) getgenv().ReachSize = v end,
+})
+
+ExploitTab:CreateToggle({
+    Name = "Loose Ball Magnet",
+    CurrentValue = false,
+    Callback = function(v) getgenv().MagnetEnabled = v end,
+})
+
+-- [[ VISUALS ]] --
+VisualsTab:CreateToggle({
+    Name = "Player ESP",
+    CurrentValue = false,
+    Callback = function(v)
+        if v then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character then
+                    local h = Instance.new("Highlight", p.Character)
+                    h.Name = "SoulESP"
+                    h.FillColor = Color3.fromRGB(163, 73, 164)
+                end
+            end
+        else
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("SoulESP") then p.Character.SoulESP:Destroy() end
+            end
+        end
+    end,
+})
+
+-- [[ COSMETICS ]] --
+local function AddCosmeticDropdown(Name, FolderName)
+    local list = {}
+    pcall(function()
+        for _, v in pairs(ReplicatedStorage.Shop[FolderName]:GetChildren()) do table.insert(list, v.Name) end
+    end)
+    EmoteTab:CreateDropdown({
+        Name = Name,
+        Options = list,
+        Callback = function(Option) EquipRemote:FireServer(Option[1]) end,
+    })
+end
+
+AddCosmeticDropdown("Pre-Game Intros", "PreGameIntro")
+AddCosmeticDropdown("Post-Game Celebs", "PostGameCeleb")
+AddCosmeticDropdown("Green Shot Celebs", "ShotCeleb")
+AddCosmeticDropdown("Vehicles", "Transportation")
+AddCosmeticDropdown("Ball Trails", "BallTrail")
+AddCosmeticDropdown("Score Effects", "NetAnims")
+
+-- [[ MISC & THEMES ]] --
+MiscTab:CreateSection("UI Customization")
+
+MiscTab:CreateDropdown({
+    Name = "UI Color Theme",
+    Options = {"Default", "Amethyst", "Amber", "Bloom", "Ocean", "Green", "Light"},
+    CurrentOption = "Amethyst",
+    Callback = function(Option)
+        getgenv().SelectedTheme = Option[1]
+    end,
+})
+
+MiscTab:CreateButton({
+    Name = "Apply Theme (Reload UI)",
+    Callback = function()
+        Rayfield:Destroy()
+        -- Re-run the script with the new theme setting
+        -- (The user can just copy-paste the whole script again or we can trigger a reload)
+        Rayfield:Notify({Title = "Theme", Content = "Please re-execute script to see theme change!", Duration = 5})
+    end,
+})
+
+MiscTab:CreateSection("Cheats")
+MiscTab:CreateButton({ Name = "Infinite Yield", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end })
+MiscTab:CreateButton({ Name = "Currency Cheat", Callback = function()
+    local coinRemote = EventsFolder:FindFirstChild("AddCoins") or EventsFolder:FindFirstChild("ClaimReward")
+    if coinRemote then
+        for i = 1, 50 do coinRemote:FireServer(999999) end
+        Rayfield:Notify({Title = "Success", Content = "Currency Remotes Fired", Duration = 2})
+    end
+end})
+
+-- [[ ENGINE LOOPS ]] --
+
+-- Universal Long Arm & Shot Magnet
+local ReachPart = Instance.new("Part")
+ReachPart.Transparency = 1
+ReachPart.CanCollide = false
+ReachPart.Anchored = false
+ReachPart.Name = "UniversalReachPart"
+
+RunService.Heartbeat:Connect(function()
+    local char = player.Character
+    if not char then return end
+
+    if getgenv().ReachEnabled then
+        local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+        if hand then
+            ReachPart.Parent = char
+            ReachPart.Size = Vector3.new(getgenv().ReachSize, getgenv().ReachSize, getgenv().ReachSize)
+            ReachPart.CFrame = hand.CFrame
+        end
+    else
+        ReachPart.Parent = nil
+    end
+
+    if getgenv().MagnetEnabled then
+        local ball = workspace:FindFirstChild("Basketball")
+        if ball and ball:IsA("BasePart") and not ball:FindFirstChild("PlayerWeld") then
+            if (char.HumanoidRootPart.Position - ball.Position).Magnitude < 15 then
+                ball.Velocity = (char.HumanoidRootPart.Position - ball.Position).Unit * 35
+            end
+        end
+    end
+
+    if getgenv().ShotMagnet then
+        local ball = workspace:FindFirstChild("Basketball")
+        if ball and ball:IsA("BasePart") and not ball:FindFirstChild("PlayerWeld") then
+            if ball.Velocity.Magnitude > 20 then
+                ball.CFrame = ball.CFrame:Lerp(char.HumanoidRootPart.CFrame, 0.2)
+            end
+        end
+    end
+end)
+
+-- Predictive Auto Guard Logic (Your Code)
+task.spawn(function()
+    while true do
+        task.wait()
+        if getgenv().GuardEnabled then
+            for i, v in pairs(Players:GetPlayers()) do
+                local char = player.Character
+                if v ~= player and v.Character and v.Character:FindFirstChild("Torso") and char and char:FindFirstChild("Torso") then
+                    if (v.Character.Torso.Position - char.Torso.Position).Magnitude < 25 then
+                        if v.Character.Torso.Velocity.Magnitude > 0.5 and v.Character:FindFirstChild("Basketball") then
+                            char.Humanoid:MoveTo(v.Character.Torso.Position + v.Character.Torso.Velocity.unit * 7)
+                        elseif v.Character.Torso.Velocity.Magnitude < 0.5 and v.Character:FindFirstChild("Basketball") then
+                            char.Humanoid:MoveTo(v.Character.Torso.Position)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Jump Lock Logic
+RunService.RenderStepped:Connect(function()
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChild("Humanoid")
+
+    if getgenv().CamLockEnabled and char:FindFirstChild("Basketball") and hum then
+        local state = hum:GetState()
+        if state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall then
+            local _, goal = getGoal()
+            if goal then
+                local targetPos = goal.Position + Vector3.new(0, arc(), 0)
+                local lookAt = CFrame.new(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = Camera.CFrame:Lerp(lookAt, 1 - getgenv().Smoothness)
+            end
+        end
+    end
+end)
+
+-- Keybinds
+UserInputService.InputBegan:Connect(function(Key, GPE)
+    if GPE then return end
+    if Key.KeyCode == Enum.KeyCode.B and player.Character:FindFirstChild("Basketball") then
+        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        task.wait(0.28)
+        Shoot()
+    elseif Key.KeyCode == Enum.KeyCode.G then
+        getgenv().CamLockEnabled = not getgenv().CamLockEnabled
+        JToggle:Set(getgenv().CamLockEnabled)
+    elseif Key.KeyCode == Enum.KeyCode.C then
+        getgenv().GuardEnabled = not getgenv().GuardEnabled
+        GToggle:Set(getgenv().GuardEnabled)
+    end
+end)
+
+Rayfield:Notify({Title = "Angels Hub", Content = "v3.0 Ultimate Loaded!", Duration = 5})
